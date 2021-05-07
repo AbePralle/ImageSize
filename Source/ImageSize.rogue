@@ -2,7 +2,7 @@
 # ImageSize.rogue
 # April 29, 2021
 #================================================================================
-$define VERSION_INFO "v1.3"
+$define VERSION_INFO "v1.4"
 $define VERSION_DATE "May 7, 2021"
 
 $requireRogue "1.8.1"
@@ -26,6 +26,7 @@ class ImageSize
   PROPERTIES
     input_filepaths = String[]
     commands        = Command[]
+    output_filepath : String
     output_command  : Command
 
     is_replace = false
@@ -78,7 +79,8 @@ class ImageSize
           error( "After 'rotate', expected one of: cw ccw 180." )
         elseIf (arg == "output")
           if (not reader.has_another) error( "Expected filepath or format after 'output'." )
-          output_command = CmdSave( reader.read )
+          output_filepath = reader.read
+          output_command = CmdSave( output_filepath )
         elseIf (arg == "replace")
           output_command = CmdSaveReplace()
           is_replace = true
@@ -102,6 +104,19 @@ class ImageSize
         if (is_split)  error( "'replace' cannot be used with 'split'." )
       endIf
 
+      if (output_filepath and is_split)
+        if (File.is_folder(output_filepath))
+          output_filepath = File.ensure_ends_with_separator( output_filepath )
+          local total = grid_size.x->Int32 * grid_size.y->Int32
+          local format = "0"
+          forEach (pow in 1..6)
+            if (total < 10^pow) escapeForEach
+            format = "0" + format
+          endForEach
+          output_command = CmdSave( "${name}-{$}.{ext}"(output_filepath,format) )
+        endIf
+      endIf
+
       if (not output_command)
         if  (commands.count > 1 or is_splice or is_split)
           if (is_split)
@@ -111,7 +126,7 @@ class ImageSize
               if (total < 10^pow) escapeForEach
               format = "0" + format
             endForEach
-            output_command = CmdSave( "{name}-{w}x{h}-{$}.{ext}"(format) )
+            output_command = CmdSave( "{name}-{$}.{ext}"(format) )
           else
             output_command = CmdSave( "{name}-{w}x{h}.{ext}" )
           endIf
